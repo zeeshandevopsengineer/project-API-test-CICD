@@ -29,7 +29,7 @@ def root():
 
 @app.get("/health")
 def health_check():
-    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+    return {"status": "unhealthy", "timestamp": datetime.now().isoformat()}
 
 @app.get("/tasks")
 def get_tasks():
