@@ -47,15 +47,19 @@ jobs:
         curl -f http://localhost:8000/time || exit 1
         echo "✅ All API tests passed!"
     
+    - name: Kill any existing processes on port 8000
+      run: |
+        sudo lsof -ti:8000 | xargs kill -9 || true
+    
     - name: Build Docker image
       run: |
         docker build -t taskflow-api:latest .
     
-    - name: Test Docker container
+    - name: Test Docker container (on port 8001 to avoid conflict)
       run: |
-        docker run -d -p 8000:8000 --name test-api taskflow-api:latest
+        docker run -d -p 8001:8000 --name test-api taskflow-api:latest
         sleep 10
-        curl -f http://localhost:8000/health || exit 1
+        curl -f http://localhost:8001/health || exit 1
         docker stop test-api
         docker rm test-api
     
