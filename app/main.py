@@ -12,9 +12,10 @@ app = FastAPI(title="My 5 Endpoints API", version="1.0.0")
 # ============================================
 # GLOBAL VARIABLES
 # ============================================
-welcome_message = "Welcome to My API!"
+# Get inputs from environment variables (set by pipeline)
+welcome_message = os.environ.get('USER_MESSAGE', 'Welcome to My API!')
 welcome_timestamp = datetime.now().isoformat()
-selected_color = "Green"
+selected_color = os.environ.get('USER_COLOR', 'Green')
 startup_time = datetime.now()
 
 tasks = []
@@ -194,7 +195,7 @@ def complete_task(task_id: int):
     raise HTTPException(status_code=404, detail="Task not found")
 
 # ============================================
-# WEB PAGE DASHBOARD
+# MAIN WEB PAGE
 # ============================================
 @app.get("/web", response_class=HTMLResponse)
 def web_page():
@@ -203,7 +204,7 @@ def web_page():
 <!DOCTYPE html>
 <html>
 <head>
-    <title>My 5 Endpoints</title>
+    <title>My 5 Endpoints - Pipeline Run</title>
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         body {{
@@ -226,6 +227,14 @@ def web_page():
             text-align: center;
             color: #8892b0;
             margin-bottom: 30px;
+        }}
+        .pipeline-badge {{
+            display: inline-block;
+            background: #4caf50;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.8em;
         }}
         .grid {{
             display: grid;
@@ -345,7 +354,9 @@ def web_page():
 <body>
     <div class="container">
         <h1>🚀 My 5 Endpoints</h1>
-        <p class="subtitle">Live System Dashboard</p>
+        <p class="subtitle">
+            Pipeline Run: <span class="pipeline-badge">✅ Live Data</span>
+        </p>
         
         <div class="grid">
             <div class="card">
@@ -482,56 +493,17 @@ def web_page():
     return html
 
 # ============================================
-# STARTUP - Handle Input
+# STARTUP - Print Info
 # ============================================
-def get_user_input():
+def print_startup_info():
     global welcome_message, welcome_timestamp, selected_color
     
     print("\n" + "="*50)
-    print("🚀 Starting My 5 Endpoints API")
+    print("🚀 My 5 Endpoints API")
     print("="*50)
-    
-    # Check if running in pipeline (non-interactive)
-    is_pipeline = os.environ.get('CI') == 'true' or not sys.stdin.isatty()
-    
-    if is_pipeline:
-        # Use default values for pipeline
-        welcome_message = "Pipeline Test Message"
-        welcome_timestamp = datetime.now().isoformat()
-        selected_color = "Green"
-        print(f"🤖 Pipeline Mode: Using defaults")
-        print(f"📝 Message: {welcome_message}")
-        print(f"🎨 Color: {selected_color}")
-    else:
-        # Interactive mode - ask user
-        try:
-            msg = input("📝 Write today's message: ").strip()
-            if msg:
-                welcome_message = msg
-                welcome_timestamp = datetime.now().isoformat()
-                print(f"✅ Message saved: '{welcome_message}'")
-        except:
-            print("⚠️ No input received, using default message")
-        
-        colors = ["Green", "Red", "Blue", "Purple"]
-        while True:
-            try:
-                color = input("🎨 Choose color (Green/Red/Blue/Purple): ").strip().capitalize()
-                if color in colors:
-                    selected_color = color
-                    print(f"✅ Color saved: {selected_color}")
-                    break
-                else:
-                    print(f"❌ Invalid color. Choose from: {', '.join(colors)}")
-            except:
-                print("⚠️ No input received, using default color: Green")
-                break
-    
-    print("\n" + "="*50)
-    print("✅ Setup complete!")
     print(f"📝 Message: {welcome_message}")
     print(f"🎨 Color: {selected_color}")
-    print("🌐 Go to: http://localhost:8000/web")
+    print(f"🌐 Web: http://localhost:8000/web")
     print("="*50 + "\n")
 
-get_user_input()
+print_startup_info()

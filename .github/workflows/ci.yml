@@ -1,10 +1,23 @@
-name: CI Pipeline
+name: CI Pipeline with Inputs
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      message:
+        description: '📝 Write today message'
+        required: true
+        default: 'Hello from Pipeline!'
+        type: string
+      color:
+        description: '🎨 Choose color'
+        required: true
+        default: 'Green'
+        type: choice
+        options:
+          - Green
+          - Red
+          - Blue
+          - Purple
 
 jobs:
   test:
@@ -28,9 +41,12 @@ jobs:
       run: |
         pytest -v
     
-    - name: Start API server (Pipeline Mode)
+    - name: Start API server with user inputs
       run: |
+        # Pass inputs as environment variables
         export CI=true
+        export USER_MESSAGE="${{ github.event.inputs.message }}"
+        export USER_COLOR="${{ github.event.inputs.color }}"
         uvicorn app.main:app --host 0.0.0.0 --port 8000 &
         sleep 10
     
@@ -47,15 +63,11 @@ jobs:
         curl -f http://localhost:8000/time || exit 1
         echo "✅ All API tests passed!"
     
-    - name: Kill any existing processes on port 8000
-      run: |
-        sudo lsof -ti:8000 | xargs kill -9 || true
-    
     - name: Build Docker image
       run: |
         docker build -t taskflow-api:latest .
     
-    - name: Test Docker container (on port 8001 to avoid conflict)
+    - name: Test Docker container
       run: |
         docker run -d -p 8001:8000 --name test-api taskflow-api:latest
         sleep 10
