@@ -12,10 +12,10 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.10'
     
@@ -30,28 +30,21 @@ jobs:
     
     - name: Start API server (Pipeline Mode)
       run: |
-        # Set CI=true so app uses default values
         export CI=true
-        # Start the server
         uvicorn app.main:app --host 0.0.0.0 --port 8000 &
         sleep 10
     
     - name: Test API endpoints
       run: |
         echo "=== Testing API Endpoints ==="
-        
         echo "🔍 Testing /health..."
         curl -f http://localhost:8000/health || exit 1
-        
         echo "🔍 Testing /..."
         curl -f http://localhost:8000/ || exit 1
-        
         echo "🔍 Testing /learn..."
         curl -f http://localhost:8000/learn || exit 1
-        
         echo "🔍 Testing /time..."
         curl -f http://localhost:8000/time || exit 1
-        
         echo "✅ All API tests passed!"
     
     - name: Build Docker image
@@ -71,7 +64,7 @@ jobs:
         docker save taskflow-api:latest > taskflow-api.tar
     
     - name: Upload Docker image
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: taskflow-api-image
         path: taskflow-api.tar
