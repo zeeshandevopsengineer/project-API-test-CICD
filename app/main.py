@@ -5,13 +5,12 @@ from typing import List, Optional
 from datetime import datetime
 import subprocess
 import os
-import json
-import uuid
+import sys
 
 app = FastAPI(title="My 5 Endpoints API", version="1.0.0")
 
 # ============================================
-# GLOBAL VARIABLES (Set at startup)
+# GLOBAL VARIABLES
 # ============================================
 welcome_message = "Welcome to My API!"
 welcome_timestamp = datetime.now().isoformat()
@@ -100,7 +99,6 @@ def health_check():
     os_info = get_os_info()
     memory = get_memory_info()
     cpu = get_cpu_info()
-    uptime_raw = get_uptime()
     uptime_seconds = get_uptime_seconds()
     
     return {
@@ -110,7 +108,6 @@ def health_check():
             "os": os_info,
             "memory": memory,
             "cpu": cpu,
-            "uptime_raw": uptime_raw,
             "uptime_seconds": uptime_seconds,
             "uptime_human": format_uptime(uptime_seconds)
         }
@@ -200,7 +197,7 @@ def complete_task(task_id: int):
     raise HTTPException(status_code=404, detail="Task not found")
 
 # ============================================
-# MAIN WEB PAGE
+# MAIN WEB PAGE - ALL 5 ENDPOINTS
 # ============================================
 @app.get("/web", response_class=HTMLResponse)
 def web_page():
@@ -362,7 +359,6 @@ def web_page():
         <p class="subtitle">Live System Dashboard</p>
         
         <div class="grid">
-            <!-- Health Check -->
             <div class="card">
                 <h2>🖥️ System Health</h2>
                 <div class="card-content" id="health-data">
@@ -370,7 +366,6 @@ def web_page():
                 </div>
             </div>
             
-            <!-- Welcome Message -->
             <div class="card">
                 <h2>📝 Today's Message</h2>
                 <div class="card-content" id="welcome-data">
@@ -378,7 +373,6 @@ def web_page():
                 </div>
             </div>
             
-            <!-- Learning Options -->
             <div class="card full-width">
                 <h2>📚 Learning Options</h2>
                 <div class="card-content">
@@ -394,7 +388,6 @@ def web_page():
                 </div>
             </div>
             
-            <!-- Colored Time -->
             <div class="card full-width">
                 <h2>🕐 Live Time</h2>
                 <div class="card-content">
@@ -481,17 +474,14 @@ def web_page():
             document.getElementById('last-updated').textContent = new Date().toLocaleString();
         }}
 
-        // Initial load
         loadAllData();
 
-        // Ticking clock
         setInterval(() => {{
             const now = new Date();
             document.getElementById('time-display').textContent = now.toTimeString().split(' ')[0];
             document.getElementById('last-updated').textContent = new Date().toLocaleString();
         }}, 1000);
 
-        // Auto-refresh health and welcome every 5 seconds
         setInterval(() => {{
             loadHealth();
             loadWelcome();
@@ -503,7 +493,7 @@ def web_page():
     return html
 
 # ============================================
-# STARTUP - Get user input
+# STARTUP - Handle input for pipeline
 # ============================================
 def get_user_input():
     global welcome_message, welcome_timestamp, selected_color
@@ -512,28 +502,41 @@ def get_user_input():
     print("🚀 Starting My 5 Endpoints API")
     print("="*50)
     
-    try:
-        msg = input("📝 Write today's message: ").strip()
-        if msg:
-            welcome_message = msg
-            welcome_timestamp = datetime.now().isoformat()
-            print(f"✅ Message saved: '{welcome_message}'")
-    except:
-        print("⚠️ No input received, using default message")
+    # Check if running in pipeline (non-interactive)
+    is_pipeline = os.environ.get('CI') == 'true' or not sys.stdin.isatty()
     
-    colors = ["Green", "Red", "Blue", "Purple"]
-    while True:
+    if is_pipeline:
+        # Use default values for pipeline
+        welcome_message = "Pipeline Test Message"
+        welcome_timestamp = datetime.now().isoformat()
+        selected_color = "Green"
+        print(f"🤖 Pipeline Mode: Using defaults")
+        print(f"📝 Message: {welcome_message}")
+        print(f"🎨 Color: {selected_color}")
+    else:
+        # Interactive mode - ask user
         try:
-            color = input("🎨 Choose color (Green/Red/Blue/Purple): ").strip().capitalize()
-            if color in colors:
-                selected_color = color
-                print(f"✅ Color saved: {selected_color}")
-                break
-            else:
-                print(f"❌ Invalid color. Choose from: {', '.join(colors)}")
+            msg = input("📝 Write today's message: ").strip()
+            if msg:
+                welcome_message = msg
+                welcome_timestamp = datetime.now().isoformat()
+                print(f"✅ Message saved: '{welcome_message}'")
         except:
-            print("⚠️ No input received, using default color: Green")
-            break
+            print("⚠️ No input received, using default message")
+        
+        colors = ["Green", "Red", "Blue", "Purple"]
+        while True:
+            try:
+                color = input("🎨 Choose color (Green/Red/Blue/Purple): ").strip().capitalize()
+                if color in colors:
+                    selected_color = color
+                    print(f"✅ Color saved: {selected_color}")
+                    break
+                else:
+                    print(f"❌ Invalid color. Choose from: {', '.join(colors)}")
+            except:
+                print("⚠️ No input received, using default color: Green")
+                break
     
     print("\n" + "="*50)
     print("✅ Setup complete!")

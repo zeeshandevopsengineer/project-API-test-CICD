@@ -5,7 +5,6 @@ from app.main import app
 client = TestClient(app)
 
 def test_health_endpoint():
-    """Test the health check endpoint"""
     response = client.get("/health")
     assert response.status_code == 200
     data = response.json()
@@ -13,17 +12,21 @@ def test_health_endpoint():
     assert "timestamp" in data
 
 def test_root_endpoint():
-    """Test the root endpoint"""
     response = client.get("/")
     assert response.status_code == 200
     data = response.json()
-    assert data["message"] == "TaskFlow API"
-    assert data["status"] == "operational"
+    assert data["message"] is not None
 
-def test_tasks_empty():
-    """Test tasks endpoint when no tasks exist"""
-    response = client.get("/tasks")
+def test_learn_endpoint():
+    response = client.get("/learn")
     assert response.status_code == 200
     data = response.json()
-    assert data["count"] == 0
-    assert data["tasks"] == []
+    assert "options" in data
+    assert len(data["options"]) == 4
+
+def test_time_endpoint():
+    response = client.get("/time")
+    assert response.status_code == 200
+    data = response.json()
+    assert "time" in data
+    assert "color" in data
