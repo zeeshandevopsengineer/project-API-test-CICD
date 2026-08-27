@@ -11,7 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v3
     
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -27,11 +28,11 @@ jobs:
       run: |
         pytest -v
     
-    - name: Start API server with default input
+    - name: Start API server (Pipeline Mode)
       run: |
-        # Set environment variable for pipeline mode
+        # Set CI=true so app uses default values
         export CI=true
-        # Start the server in background
+        # Start the server
         uvicorn app.main:app --host 0.0.0.0 --port 8000 &
         sleep 10
     

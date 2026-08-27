@@ -34,7 +34,7 @@ class Task(BaseModel):
     completed: bool = False
 
 # ============================================
-# HELPER FUNCTIONS
+# HELPER FUNCTIONS - OS COMMANDS
 # ============================================
 
 def run_command(command):
@@ -63,9 +63,6 @@ def get_memory_info():
 
 def get_cpu_info():
     return run_command("top -bn1 | grep 'Cpu(s)'")
-
-def get_uptime():
-    return run_command("uptime")
 
 def get_uptime_seconds():
     output = run_command("cat /proc/uptime")
@@ -197,7 +194,7 @@ def complete_task(task_id: int):
     raise HTTPException(status_code=404, detail="Task not found")
 
 # ============================================
-# MAIN WEB PAGE - ALL 5 ENDPOINTS
+# WEB PAGE DASHBOARD
 # ============================================
 @app.get("/web", response_class=HTMLResponse)
 def web_page():
@@ -306,14 +303,6 @@ def web_page():
         .time-label {{
             text-align: center;
             color: #8892b0;
-        }}
-        .badge {{
-            display: inline-block;
-            padding: 3px 10px;
-            border-radius: 20px;
-            font-size: 0.7em;
-            background: #4caf50;
-            color: white;
         }}
         .last-updated {{
             text-align: center;
@@ -493,7 +482,7 @@ def web_page():
     return html
 
 # ============================================
-# STARTUP - Handle input for pipeline
+# STARTUP - Handle Input
 # ============================================
 def get_user_input():
     global welcome_message, welcome_timestamp, selected_color

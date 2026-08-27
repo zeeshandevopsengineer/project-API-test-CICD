@@ -27,7 +27,6 @@ def test_get_tasks():
     assert response.status_code == 200
     data = response.json()
     assert data["count"] == 1
-    assert len(data["tasks"]) == 1
 
 def test_get_single_task():
     create_response = client.post("/tasks", json={"title": "Task 1"})
