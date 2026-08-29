@@ -9,17 +9,25 @@ on:
         description: '📝 Write today message'
         required: true
         default: 'Hello from Pipeline!'
+        type: string
       color:
         description: '🎨 Choose color'
         required: true
         default: 'Green'
+        type: choice
+        options:
+          - Green
+          - Red
+          - Blue
+          - Purple
 
 jobs:
   test:
     runs-on: self-hosted
     
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
     
     - name: Setup Python virtual environment
       run: |
@@ -33,19 +41,31 @@ jobs:
         source .venv/bin/activate
         pytest -v
     
-    - name: Start API with your inputs
+    - name: Start API with your inputs (Keep Running)
       run: |
         source .venv/bin/activate
         export USER_MESSAGE="${{ github.event.inputs.message }}"
         export USER_COLOR="${{ github.event.inputs.color }}"
-        uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+        echo "========================================="
+        echo "📝 Your Message: ${{ github.event.inputs.message }}"
+        echo "🎨 Your Color: ${{ github.event.inputs.color }}"
+        echo "========================================="
+        nohup uvicorn app.main:app --host 0.0.0.0 --port 8000 &
         sleep 10
+        echo "✅ API Server running on port 8000"
+        echo "🌐 Web page: http://localhost:8000/web"
+        echo "✏️ Form: http://localhost:8000/form"
     
     - name: Test API endpoints
       run: |
+        echo "=== Testing API Endpoints ==="
+        echo "🔍 Testing /health..."
         curl -f http://localhost:8000/health || exit 1
+        echo "🔍 Testing /..."
         curl -f http://localhost:8000/ || exit 1
+        echo "🔍 Testing /learn..."
         curl -f http://localhost:8000/learn || exit 1
+        echo "🔍 Testing /time..."
         curl -f http://localhost:8000/time || exit 1
         echo "✅ All API tests passed!"
     
@@ -61,8 +81,16 @@ jobs:
         docker stop test-api
         docker rm test-api
     
-    - name: Upload Docker image
-      uses: actions/upload-artifact@v4
-      with:
-        name: taskflow-api-image
-        path: taskflow-api.tar
+    - name: Keep server alive
+      run: |
+        echo "========================================="
+        echo "✅ API Server is RUNNING!"
+        echo "🌐 Open: http://localhost:8000/web"
+        echo "✏️ Customize: http://localhost:8000/form"
+        echo "📝 Message: ${{ github.event.inputs.message }}"
+        echo "🎨 Color: ${{ github.event.inputs.color }}"
+        echo "========================================="
+        echo "🟢 Server will continue running..."
+        echo "🛑 To stop: pkill -f uvicorn"
+        # Keep job alive to keep server running
+        tail -f /dev/null

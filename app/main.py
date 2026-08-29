@@ -1,16 +1,18 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 import subprocess
 import os
 import sys
+import json
 
 app = FastAPI(title="My 5 Endpoints API", version="1.0.0")
 
 # ============================================
-# GLOBAL VARIABLES - FROM ENVIRONMENT
+# GLOBAL VARIABLES
 # ============================================
 welcome_message = os.environ.get('USER_MESSAGE', 'Welcome to My API!')
 welcome_timestamp = datetime.now().isoformat()
@@ -124,7 +126,8 @@ def root():
             "/ - Welcome message",
             "/learn - Learning options",
             "/time - Colored time display",
-            "/web - Full web dashboard"
+            "/web - Full web dashboard",
+            "/form - Input form for message and color"
         ]
     }
 
@@ -194,6 +197,228 @@ def complete_task(task_id: int):
     raise HTTPException(status_code=404, detail="Task not found")
 
 # ============================================
+# FORM ENDPOINT - For entering message and color
+# ============================================
+@app.get("/form", response_class=HTMLResponse)
+def form_page():
+    html = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Set Message & Color</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            background: #0a192f;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        h1 {
+            color: #64ffda;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #8892b0;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            color: #ccd6f6;
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        input[type="text"], select {
+            width: 100%;
+            padding: 12px 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(100, 255, 218, 0.2);
+            background: rgba(0,0,0,0.3);
+            color: #e6f1ff;
+            font-size: 1em;
+        }
+        input[type="text"]:focus, select:focus {
+            outline: none;
+            border-color: #64ffda;
+        }
+        select option {
+            background: #0a192f;
+            color: #e6f1ff;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #64ffda 0%, #48c9b0 100%);
+            color: #0a192f;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        button:hover {
+            transform: scale(1.02);
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            background: rgba(100, 255, 218, 0.05);
+            border-left: 4px solid #64ffda;
+            display: none;
+        }
+        .result.show {
+            display: block;
+        }
+        .result-item {
+            color: #e6f1ff;
+            margin: 5px 0;
+        }
+        .result-item strong {
+            color: #64ffda;
+        }
+        .links {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .links a {
+            color: #64ffda;
+            text-decoration: none;
+            margin: 0 10px;
+        }
+        .links a:hover {
+            text-decoration: underline;
+        }
+        .color-preview {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            vertical-align: middle;
+            margin-left: 10px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Customize Your Dashboard</h1>
+        <p class="subtitle">Enter your message and choose a color for the time</p>
+        
+        <form id="configForm">
+            <div class="form-group">
+                <label for="message">📝 Today's Message</label>
+                <input type="text" id="message" name="message" placeholder="Enter your message here..." value="I am Shani, Anaya Babaaa">
+            </div>
+            
+            <div class="form-group">
+                <label for="color">🎨 Time Color</label>
+                <select id="color" name="color">
+                    <option value="Green">Green</option>
+                    <option value="Red" selected>Red</option>
+                    <option value="Blue">Blue</option>
+                    <option value="Purple">Purple</option>
+                </select>
+                <span class="color-preview" id="colorPreview" style="background-color: Red;"></span>
+            </div>
+            
+            <button type="submit">🚀 Apply & View Dashboard</button>
+        </form>
+        
+        <div class="result" id="result">
+            <div class="result-item"><strong>📝 Message:</strong> <span id="resultMessage"></span></div>
+            <div class="result-item"><strong>🎨 Color:</strong> <span id="resultColor"></span></div>
+            <div class="result-item" style="margin-top:10px;">
+                <a href="/web" target="_blank">🌐 Open Dashboard →</a>
+            </div>
+        </div>
+        
+        <div class="links">
+            <a href="/web">📊 Dashboard</a>
+            <a href="/health">🖥️ Health</a>
+            <a href="/time">🕐 Time</a>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('configForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const message = document.getElementById('message').value;
+            const color = document.getElementById('color').value;
+            
+            // Show result
+            document.getElementById('resultMessage').textContent = message || 'No message';
+            document.getElementById('resultColor').textContent = color;
+            document.getElementById('result').classList.add('show');
+            
+            // Send to server via API
+            try {
+                const response = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message, color })
+                });
+                const data = await response.json();
+                console.log('✅ Config updated:', data);
+            } catch (error) {
+                console.error('❌ Error:', error);
+            }
+        });
+
+        // Color preview on change
+        document.getElementById('color').addEventListener('change', function() {
+            document.getElementById('colorPreview').style.backgroundColor = this.value;
+        });
+    </script>
+</body>
+</html>
+    """
+    return html
+
+# ============================================
+# API ENDPOINT - Update config
+# ============================================
+@app.post("/api/config")
+async def update_config(request: Request):
+    global welcome_message, welcome_timestamp, selected_color
+    
+    data = await request.json()
+    message = data.get('message', welcome_message)
+    color = data.get('color', selected_color)
+    
+    welcome_message = message
+    welcome_timestamp = datetime.now().isoformat()
+    selected_color = color
+    
+    return {
+        "status": "success",
+        "message": welcome_message,
+        "color": selected_color,
+        "timestamp": welcome_timestamp
+    }
+
+# ============================================
 # MAIN WEB PAGE
 # ============================================
 @app.get("/web", response_class=HTMLResponse)
@@ -203,7 +428,7 @@ def web_page():
 <!DOCTYPE html>
 <html>
 <head>
-    <title>My 5 Endpoints - Pipeline Run</title>
+    <title>My 5 Endpoints - Dashboard</title>
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         body {{
@@ -216,24 +441,32 @@ def web_page():
             max-width: 1400px;
             margin: 0 auto;
         }}
-        h1 {{
-            color: #64ffda;
+        .header {{
             text-align: center;
-            font-size: 2.5em;
             padding: 20px 0;
         }}
-        .subtitle {{
-            text-align: center;
-            color: #8892b0;
-            margin-bottom: 30px;
+        h1 {{
+            color: #64ffda;
+            font-size: 2.5em;
         }}
-        .pipeline-badge {{
-            display: inline-block;
-            background: #4caf50;
-            color: white;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 0.8em;
+        .subtitle {{
+            color: #8892b0;
+            margin-bottom: 20px;
+        }}
+        .nav-links {{
+            margin: 20px 0;
+        }}
+        .nav-links a {{
+            color: #64ffda;
+            text-decoration: none;
+            margin: 0 15px;
+            padding: 8px 16px;
+            border: 1px solid rgba(100, 255, 218, 0.2);
+            border-radius: 8px;
+            transition: all 0.3s;
+        }}
+        .nav-links a:hover {{
+            background: rgba(100, 255, 218, 0.1);
         }}
         .grid {{
             display: grid;
@@ -337,6 +570,15 @@ def web_page():
             grid-template-columns: 1fr 1fr;
             gap: 10px;
         }}
+        .badge {{
+            display: inline-block;
+            padding: 3px 12px;
+            border-radius: 20px;
+            font-size: 0.7em;
+            font-weight: bold;
+            background: #4caf50;
+            color: white;
+        }}
         @media (max-width: 768px) {{
             .grid {{
                 grid-template-columns: 1fr;
@@ -352,10 +594,16 @@ def web_page():
 </head>
 <body>
     <div class="container">
-        <h1>🚀 My 5 Endpoints</h1>
-        <p class="subtitle">
-            Pipeline Run: <span class="pipeline-badge">✅ Live Data</span>
-        </p>
+        <div class="header">
+            <h1>🚀 My 5 Endpoints</h1>
+            <p class="subtitle">Live System Dashboard</p>
+            <div class="nav-links">
+                <a href="/form">✏️ Customize</a>
+                <a href="/health">🖥️ Health</a>
+                <a href="/time">🕐 Time</a>
+                <a href="/learn">📚 Learn</a>
+            </div>
+        </div>
         
         <div class="grid">
             <div class="card">
@@ -503,6 +751,7 @@ def print_startup_info():
     print(f"📝 Message: {welcome_message}")
     print(f"🎨 Color: {selected_color}")
     print(f"🌐 Web: http://localhost:8000/web")
+    print(f"✏️ Form: http://localhost:8000/form")
     print("="*50 + "\n")
 
 print_startup_info()
