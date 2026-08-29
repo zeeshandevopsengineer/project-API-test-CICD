@@ -1,6 +1,8 @@
 name: CI Pipeline with Inputs
 
 on:
+  push:
+    branches: [ main ]
   workflow_dispatch:
     inputs:
       message:
@@ -21,35 +23,93 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
     
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
+    # ============================================
+    # SETUP PYTHON ON SELF-HOSTED RUNNER
+    # ============================================
+    - name: Setup Python
+      run: |
+        echo "🔍 Checking Python installation..."
+        python3 --version || echo "Python not found"
+        
+        echo "📦 Installing Python if needed..."
+        sudo apt-get update
+        sudo apt-get install -y python3 python3-pip python3-venv
+        
+        echo "✅ Python version: $(python3 --version)"
+        echo "✅ Pip version: $(pip3 --version)"
     
+    # ============================================
+    # SETUP DOCKER ON SELF-HOSTED RUNNER
+    # ============================================
+    - name: Setup Docker
+      run: |
+        echo "🔍 Checking Docker installation..."
+        docker --version || echo "Docker not found"
+        
+        echo "📦 Installing Docker if needed..."
+        sudo apt-get update
+        sudo apt-get install -y docker.io
+        
+        echo "🚀 Starting Docker service..."
+        sudo systemctl start docker
+        sudo systemctl enable docker
+        
+        echo "👤 Adding runner to docker group..."
+        sudo usermod -aG docker $USER
+        
+        echo "✅ Docker version: $(docker --version)"
+    
+    # ============================================
+    # VERIFY INSTALLATIONS
+    # ============================================
+    - name: Verify installations
+      run: |
+        echo "========================================="
+        echo "✅ Python: $(python3 --version 2>&1)"
+        echo "✅ Pip: $(pip3 --version 2>&1)"
+        echo "✅ Docker: $(docker --version 2>&1)"
+        echo "========================================="
+    
+    # ============================================
+    # INSTALL DEPENDENCIES
+    # ============================================
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        python3 -m pip install --upgrade pip
+        pip3 install -r requirements.txt
     
-    - name: Run unit tests
+    # ============================================
+    # RUN TESTS
+    # ============================================
+    - name: Run tests
       run: |
         pytest -v
     
-    - name: Start API server with user inputs
+    # ============================================
+    # START API WITH USER INPUTS
+    # ============================================
+    - name: Start API with your message & color
       run: |
-        # Pass inputs as environment variables
-        export CI=true
+        echo "========================================="
+        echo "📝 Your Message: ${{ github.event.inputs.message }}"
+        echo "🎨 Your Color: ${{ github.event.inputs.color }}"
+        echo "========================================="
+        
         export USER_MESSAGE="${{ github.event.inputs.message }}"
         export USER_COLOR="${{ github.event.inputs.color }}"
+        
         uvicorn app.main:app --host 0.0.0.0 --port 8000 &
         sleep 10
     
+    # ============================================
+    # TEST API ENDPOINTS
+    # ============================================
     - name: Test API endpoints
       run: |
         echo "=== Testing API Endpoints ==="
@@ -63,10 +123,16 @@ jobs:
         curl -f http://localhost:8000/time || exit 1
         echo "✅ All API tests passed!"
     
+    # ============================================
+    # BUILD DOCKER
+    # ============================================
     - name: Build Docker image
       run: |
         docker build -t taskflow-api:latest .
     
+    # ============================================
+    # TEST DOCKER CONTAINER
+    # ============================================
     - name: Test Docker container
       run: |
         docker run -d -p 8001:8000 --name test-api taskflow-api:latest
@@ -75,12 +141,13 @@ jobs:
         docker stop test-api
         docker rm test-api
     
-    - name: Save Docker image as artifact
+    # ============================================
+    # SHOW WHERE IT RAN
+    # ============================================
+    - name: Show runner info
       run: |
-        docker save taskflow-api:latest > taskflow-api.tar
-    
-    - name: Upload Docker image
-      uses: actions/upload-artifact@v4
-      with:
-        name: taskflow-api-image
-        path: taskflow-api.tar
+        echo "========================================="
+        echo "🏠 Pipeline ran on: $(hostname)"
+        echo "👤 User: $(whoami)"
+        echo "📂 Directory: $(pwd)"
+        echo "========================================="

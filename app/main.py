@@ -10,9 +10,8 @@ import sys
 app = FastAPI(title="My 5 Endpoints API", version="1.0.0")
 
 # ============================================
-# GLOBAL VARIABLES
+# GLOBAL VARIABLES - FROM ENVIRONMENT
 # ============================================
-# Get inputs from environment variables (set by pipeline)
 welcome_message = os.environ.get('USER_MESSAGE', 'Welcome to My API!')
 welcome_timestamp = datetime.now().isoformat()
 selected_color = os.environ.get('USER_COLOR', 'Green')
